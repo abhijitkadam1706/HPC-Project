@@ -1,0 +1,253 @@
+// Prisma Schema for HPC Portal
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum EnvironmentType {
+  MODULES
+  CONDA
+  CONTAINER
+  RAW
+}
+
+enum JobType {
+  SINGLE
+  MPI
+  ARRAY
+}
+
+enum InputLocationType {
+  UPLOAD
+  WORKSPACE
+  S3
+}
+
+enum OutputLocationType {
+  WORKSPACE
+  S3
+}
+
+enum RetentionPolicy {
+  DAYS_7
+  DAYS_30
+  DAYS_90
+  FOREVER
+}
+
+enum JobStatus {
+  SUBMITTED
+  QUEUED
+  RUNNING
+  POST_PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum JobEventType {
+  SUBMITTED
+  QUEUED
+  STARTED
+  UPDATED
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum LogType {
+  STDOUT
+  STDERR
+  SCHEDULER
+}
+
+enum StorageType {
+  WORKSPACE
+  S3
+  INLINE
+  LOCAL_FS
+}
+
+enum WorkspaceItemType {
+  FILE
+  FOLDER
+}
+
+model User {
+  id                                String    @id @default(uuid())
+  name                              String
+  email                             String    @unique
+  passwordHash                      String
+  organization                      String?
+  role                              Role      @default(USER)
+  timezone                          String    @default("UTC")
+  defaultNotificationPreferences    Json?
+  createdAt                         DateTime  @default(now())
+  updatedAt                         DateTime  @updatedAt
+
+  sessions                          Session[]
+  jobs                              Job[]
+  jobTemplates                      JobTemplate[]
+  workspaceItems                    WorkspaceItem[]
+  usageRecords                      UsageRecord[]
+
+  @@index([email])
+}
+
+model Session {
+  id                String    @id @default(uuid())
+  userId            String
+  refreshTokenHash  String
+  userAgent         String?
+  ipAddress         String?
+  expiresAt         DateTime
+  createdAt         DateTime  @default(now())
+
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Job {
+  id                    String                @id @default(uuid())
+  externalSchedulerId   String?
+  userId                String
+  jobName               String
+  description           String?
+  environmentType       EnvironmentType
+  environmentConfig     Json
+  queue                 String
+  jobType               JobType               @default(SINGLE)
+  nodes                 Int                   @default(1)
+  tasks                 Int                   @default(1)
+  cpusPerTask           Int                   @default(1)
+  memoryPerNodeGB       Int                   @default(4)
+  gpusPerNode           Int                   @default(0)
+  walltimeSeconds       Int
+  priority              Int                   @default(0)
+  workingDirectory      String
+  command               String
+  arguments             String?
+  preJobScript          String?
+  postJobScript         String?
+  inputLocationType     InputLocationType
+  inputLocationRef      String?
+  outputLocationType    OutputLocationType
+  outputLocationRef     String?
+  retentionPolicy       RetentionPolicy       @default(DAYS_30)
+  status                JobStatus             @default(SUBMITTED)
+  statusReason          String?
+  submissionTime        DateTime              @default(now())
+  startTime             DateTime?
+  endTime               DateTime?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events                JobEvent[]
+  logs                  JobLog[]
+  workspaceItems        WorkspaceItem[]
+  usageRecords          UsageRecord[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([externalSchedulerId])
+  @@index([submissionTime])
+}
+
+model JobEvent {
+  id          String        @id @default(uuid())
+  jobId       String
+  type        JobEventType
+  message     String
+  timestamp   DateTime      @default(now())
+
+  job         Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([timestamp])
+}
+
+model JobLog {
+  id            String        @id @default(uuid())
+  jobId         String
+  type          LogType
+  storageType   StorageType
+  storageRef    String?
+  preview       String?
+  createdAt     DateTime      @default(now())
+
+  job           Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+}
+
+model JobTemplate {
+  id                  String            @id @default(uuid())
+  ownerId             String?
+  name                String
+  description         String?
+  environmentType     EnvironmentType
+  environmentConfig   Json
+  defaultJobConfig    Json
+  isGlobal            Boolean           @default(false)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  owner               User?             @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
+  @@index([ownerId])
+  @@index([isGlobal])
+}
+
+model WorkspaceItem {
+  id                String              @id @default(uuid())
+  userId            String
+  type              WorkspaceItemType
+  name              String
+  parentId          String?
+  storageType       StorageType
+  storageRef        String
+  sizeBytes         BigInt?
+  isFromJobOutput   Boolean             @default(false)
+  jobId             String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent            WorkspaceItem?      @relation("WorkspaceHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children          WorkspaceItem[]     @relation("WorkspaceHierarchy")
+  job               Job?                @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([parentId])
+  @@index([jobId])
+}
+
+model UsageRecord {
+  id              String    @id @default(uuid())
+  userId          String
+  jobId           String
+  cpuHours        Float
+  gpuHours        Float
+  walltimeSeconds Int
+  createdAt       DateTime  @default(now())
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job             Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([jobId])
+  @@index([createdAt])
+}
