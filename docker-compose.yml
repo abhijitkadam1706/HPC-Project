@@ -1,0 +1,102 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: hpc-portal-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hpcportal}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hpcportal123}
+      POSTGRES_DB: ${POSTGRES_DB:-hpcportal}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hpcportal}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hpc-network
+
+  # Redis (for BullMQ)
+  redis:
+    image: redis:7-alpine
+    container_name: hpc-portal-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - hpc-network
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hpc-portal-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-hpcportal}:${POSTGRES_PASSWORD:-hpcportal123}@postgres:5432/${POSTGRES_DB:-hpcportal}?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-your-super-secret-refresh-key-change-this}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:80}
+      SLURM_MODE: ${SLURM_MODE:-local}
+      SLURM_SSH_HOST: ${SLURM_SSH_HOST:-}
+      SLURM_SSH_PORT: ${SLURM_SSH_PORT:-22}
+      SLURM_SSH_USER: ${SLURM_SSH_USER:-}
+      SLURM_SSH_KEY_PATH: ${SLURM_SSH_KEY_PATH:-}
+      SLURM_SSH_PASSWORD: ${SLURM_SSH_PASSWORD:-}
+      WORKSPACE_ROOT: ${WORKSPACE_ROOT:-/shared/hpc-portal}
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ${WORKSPACE_ROOT:-./workspace}:/shared/hpc-portal
+      - ${SLURM_SSH_KEY_PATH:-./ssh_keys}:/app/ssh_keys:ro
+    networks:
+      - hpc-network
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000/api}
+    container_name: hpc-portal-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - hpc-network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  hpc-network:
+    driver: bridge
