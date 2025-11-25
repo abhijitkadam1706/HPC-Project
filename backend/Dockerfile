@@ -1,5 +1,11 @@
 # Backend Dockerfile
-FROM node:20-alpine AS builder
+# Build stage
+FROM node:20-slim AS builder
+
+# Install OpenSSL and other dependencies for Prisma
+RUN apt-get update -y && \
+    apt-get install -y openssl libssl-dev && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -7,8 +13,8 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install dependencies
-RUN npm ci
+# Install dependencies (using npm install instead of npm ci as package-lock.json may be missing)
+RUN npm install
 
 # Copy source code
 COPY . .
@@ -20,7 +26,12 @@ RUN npx prisma generate
 RUN npm run build
 
 # Production stage
-FROM node:20-alpine
+FROM node:20-slim
+
+# Install OpenSSL for Prisma runtime
+RUN apt-get update -y && \
+    apt-get install -y openssl && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -29,11 +40,13 @@ COPY package*.json ./
 COPY prisma ./prisma/
 
 # Install production dependencies only
-RUN npm ci --only=production
+RUN npm install --production
 
-# Copy built application
+# Generate Prisma Client for production
+RUN npx prisma generate
+
+# Copy built application from builder
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Expose port
 EXPOSE 3000
@@ -43,4 +56,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
   CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Run migrations and start server
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]

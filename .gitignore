@@ -44,9 +44,11 @@ ssh_keys/
 *.pem
 *.key
 
-# Workspace
-workspace/
-shared/
+# Workspace Data (not source code)
+/workspace/
+/shared/
+backend/workspace/
+frontend/workspace/
 
 # Backup files
 *.sql
