@@ -9,6 +9,8 @@ import NewJobPage from './pages/NewJobPage';
 import JobDetailPage from './pages/JobDetailPage';
 import WorkspacePage from './pages/WorkspacePage';
 import ProfilePage from './pages/ProfilePage';
+import TemplatesPage from './pages/TemplatesPage';
+import UsagePage from './pages/UsagePage';
 import AppLayout from './components/AppLayout';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -94,6 +96,26 @@ function AppRoutes() {
           <ProtectedRoute>
             <AppLayout>
               <ProfilePage />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/templates"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <TemplatesPage />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/usage"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <UsagePage />
             </AppLayout>
           </ProtectedRoute>
         }

@@ -10,6 +10,8 @@ import {
   LogOut,
   Menu,
   X,
+  FileText,
+  BarChart3,
 } from 'lucide-react';
 
 const SidebarLink = ({ to, icon: Icon, label, active }: any) => (
@@ -46,7 +48,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <SidebarLink to="/jobs/new" icon={PlusCircle} label="New Job" active={isActive('/jobs/new')} />
           <SidebarLink to="/jobs" icon={Server} label="My Jobs" active={isActive('/jobs') && !isActive('/jobs/new')} />
           <SidebarLink to="/workspace" icon={Folder} label="Workspace" active={isActive('/workspace')} />
+          <SidebarLink to="/templates" icon={FileText} label="Templates" active={isActive('/templates')} />
           <div className="pt-4 mt-4 border-t border-slate-800">
+            <SidebarLink to="/usage" icon={BarChart3} label="Usage & Billing" active={isActive('/usage')} />
             <SidebarLink to="/profile" icon={Settings} label="Profile" active={isActive('/profile')} />
           </div>
         </div>
@@ -121,6 +125,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 className="block w-full text-left py-3 px-4 text-white text-lg border-b border-slate-800"
               >
                 Workspace
+              </Link>
+              <Link
+                to="/templates"
+                onClick={() => setMobileMenu(false)}
+                className="block w-full text-left py-3 px-4 text-white text-lg border-b border-slate-800"
+              >
+                Templates
+              </Link>
+              <Link
+                to="/usage"
+                onClick={() => setMobileMenu(false)}
+                className="block w-full text-left py-3 px-4 text-white text-lg border-b border-slate-800"
+              >
+                Usage & Billing
               </Link>
               <Link
                 to="/profile"
