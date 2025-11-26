@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Server, Terminal, Activity, HardDrive, ChevronRight } from 'lucide-react';
+import { Server, Terminal, Activity, HardDrive } from 'lucide-react';
 
 export default function LandingPage() {
   return (
