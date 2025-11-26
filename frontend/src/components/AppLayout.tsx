@@ -10,7 +10,6 @@ import {
   LogOut,
   Menu,
   X,
-  User,
 } from 'lucide-react';
 
 const SidebarLink = ({ to, icon: Icon, label, active }: any) => (
