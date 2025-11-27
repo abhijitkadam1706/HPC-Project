@@ -96,6 +96,21 @@
 **Files Created:**
 - `DEPLOYMENT_FIX.md`
 
+### 8. ✅ Docker Volume Mount for EFS
+**Issue:** Docker containers were using old local `/shared/hpc-portal` directory instead of the EFS mount because Docker volumes were established before EFS was mounted at `/shared`
+
+**Fixed:**
+- Created automated fix script that:
+  1. Stops all containers to unmount volumes
+  2. Verifies EFS is mounted at `/shared`
+  3. Creates `/shared/hpc-portal` on EFS if needed
+  4. Sets correct permissions (ec2-user:ec2-user)
+  5. Restarts containers with fresh volume mounts to EFS
+- This allows both backend and Slurm cluster to access the same job script files via EFS shared storage
+
+**Files Created:**
+- `FIX_EFS_DOCKER_MOUNT.sh`
+
 ## Branch Information
 **Branch:** `claude/fix-frontend-backend-errors-0176JgihjikcTc1Sunh7ENMP`
 
@@ -104,8 +119,52 @@
 2. `d26a34e` - docs: Add deployment fix guide and environment configuration example
 3. `9e8f357` - feat: Implement complete Jobs and Job Detail pages
 4. `b4faff9` - feat: Implement file upload and folder navigation in Workspace
+5. `6176703` - docs: Add comprehensive fixes summary and testing guide
+6. `b25dab4` - fix: Add script to fix docker volume mount for EFS
 
 ## Testing Guide
+
+### Step 0: Fix Docker Volume Mount for EFS (IMPORTANT!)
+
+**This step is critical if you mounted EFS AFTER starting Docker containers.**
+
+SSH into your backend server (35.91.86.15):
+
+```bash
+ssh -i your-key.pem ec2-user@35.91.86.15
+cd /home/ec2-user/HPC-Project
+
+# Pull latest changes
+git fetch origin
+git checkout claude/fix-frontend-backend-errors-0176JgihjikcTc1Sunh7ENMP
+git pull origin claude/fix-frontend-backend-errors-0176JgihjikcTc1Sunh7ENMP
+
+# Make the fix script executable
+chmod +x FIX_EFS_DOCKER_MOUNT.sh
+
+# Run the fix script
+./FIX_EFS_DOCKER_MOUNT.sh
+```
+
+**This script will:**
+1. Stop all containers (to unmount old volumes)
+2. Verify EFS is mounted at `/shared`
+3. Create `/shared/hpc-portal` on EFS
+4. Set correct permissions
+5. Restart containers with fresh volume mounts to EFS
+
+**After running, verify:**
+```bash
+# Check that backend can access EFS
+docker compose -f docker-compose-backend.yml exec backend ls -la /shared/hpc-portal/
+
+# Submit a test job from frontend
+# Then verify files are on EFS:
+find /shared/hpc-portal/users/ -name "*.sh" -ls
+
+# Verify Slurm cluster can see the same files:
+ssh ec2-user@34.210.218.163 'find /shared/hpc-portal/users/ -name "*.sh" -ls'
+```
 
 ### Step 1: Deploy Backend Changes
 
