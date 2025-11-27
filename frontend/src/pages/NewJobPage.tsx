@@ -18,7 +18,7 @@ export default function NewJobPage() {
     description: '',
     environmentType: 'RAW',
     environmentConfig: {},
-    queue: 'compute-std',
+    queue: 'CPU',
     jobType: 'SINGLE',
     nodes: 1,
     tasks: 1,
@@ -353,10 +353,9 @@ export default function NewJobPage() {
                     className="block w-full rounded-md border-gray-300 shadow-sm border p-2 bg-white focus:border-indigo-500 focus:ring-indigo-500"
                     required
                   >
-                    <option value="compute-std">compute-std (Standard CPU)</option>
-                    <option value="compute-gpu">compute-gpu (GPU Nodes)</option>
-                    <option value="memory-high">memory-high (High Memory)</option>
-                    <option value="debug">debug (Quick Tests)</option>
+                    <option value="CPU">CPU (Standard CPU Nodes)</option>
+                    <option value="GPU">GPU (GPU Nodes)</option>
+                    <option value="Memory-Optimized">Memory-Optimized (High Memory Nodes)</option>
                   </select>
                 </div>
               </div>

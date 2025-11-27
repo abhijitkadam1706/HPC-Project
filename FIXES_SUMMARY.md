@@ -111,6 +111,25 @@
 **Files Created:**
 - `FIX_EFS_DOCKER_MOUNT.sh`
 
+### 9. ✅ Invalid Slurm Partition Names (CRITICAL FIX!)
+**Issue:** Job submission failing with error: `sbatch: error: invalid partition specified: compute-std`
+
+**Root Cause:** Frontend was using placeholder partition names that don't exist on the actual Slurm cluster
+
+**Fixed:**
+- Updated default partition from `compute-std` to `CPU`
+- Updated partition dropdown to show actual partitions from cluster:
+  - `CPU` (Standard CPU Nodes) - default
+  - `GPU` (GPU Nodes)
+  - `Memory-Optimized` (High Memory Nodes)
+- Removed non-existent placeholder partitions (`compute-gpu`, `memory-high`, `debug`)
+
+**Files Modified:**
+- `frontend/src/pages/NewJobPage.tsx`
+
+**Files Created:**
+- `DEPLOY_PARTITION_FIX.md`
+
 ## Branch Information
 **Branch:** `claude/fix-frontend-backend-errors-0176JgihjikcTc1Sunh7ENMP`
 
@@ -121,12 +140,43 @@
 4. `b4faff9` - feat: Implement file upload and folder navigation in Workspace
 5. `6176703` - docs: Add comprehensive fixes summary and testing guide
 6. `b25dab4` - fix: Add script to fix docker volume mount for EFS
+7. `da58442` - docs: Update fixes summary with Docker EFS volume mount fix
+8. `1a869e6` - fix: Update Slurm partition names to match actual cluster
+9. `55958e5` - docs: Add deployment guide for partition fix
 
 ## Testing Guide
 
-### Step 0: Fix Docker Volume Mount for EFS (IMPORTANT!)
+### Step 0: Deploy Partition Fix (REQUIRED!)
 
-**This step is critical if you mounted EFS AFTER starting Docker containers.**
+**This is the critical fix that makes job submission work!**
+
+SSH into your frontend server (34.209.242.183):
+
+```bash
+ssh -i your-key.pem ec2-user@34.209.242.183
+cd /home/ec2-user/HPC-Project
+
+# Pull latest changes
+git fetch origin
+git checkout claude/fix-frontend-backend-errors-0176JgihjikcTc1Sunh7ENMP
+git pull origin claude/fix-frontend-backend-errors-0176JgihjikcTc1Sunh7ENMP
+
+# Rebuild frontend with correct partition names
+cd frontend
+npm run build
+
+# Restart frontend (if using pm2)
+pm2 restart all
+```
+
+**What this fixes:**
+- Updates partition names from placeholders to actual Slurm partitions (CPU, GPU, Memory-Optimized)
+- Fixes "invalid partition specified: compute-std" error
+- Makes job submission work! ✅
+
+### Step 1: Fix Docker Volume Mount for EFS (if needed)
+
+**This step is only needed if you mounted EFS AFTER starting Docker containers.**
 
 SSH into your backend server (35.91.86.15):
 
