@@ -15,8 +15,6 @@ import {
   AlertCircle,
   RefreshCw,
   StopCircle,
-  Cpu,
-  HardDrive,
   Server,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -61,9 +59,10 @@ export default function JobDetailPage() {
       const response = await api.get(`/jobs/${id}`);
       return response.data;
     },
-    refetchInterval: (data) => {
+    refetchInterval: (query) => {
       // Auto-refresh every 5 seconds if job is running or queued
-      return data?.status === 'RUNNING' || data?.status === 'QUEUED' ? 5000 : false;
+      const jobData = query.state.data;
+      return jobData?.status === 'RUNNING' || jobData?.status === 'QUEUED' ? 5000 : false;
     },
   });
 
