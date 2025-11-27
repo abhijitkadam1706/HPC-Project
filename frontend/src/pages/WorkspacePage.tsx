@@ -59,15 +59,42 @@ const MOCK_FILES: FileItem[] = [
 export default function WorkspacePage() {
   const [files, setFiles] = useState<FileItem[]>(MOCK_FILES);
   const [searchTerm, setSearchTerm] = useState('');
-  const [currentPath] = useState(['projects', 'hpc-workspace']);
+  const [currentPath, setCurrentPath] = useState<string[]>(['workspace']);
 
   const filteredFiles = files.filter((file) =>
     file.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleUpload = () => {
-    // TODO: Implement file upload
-    alert('File upload functionality - to be implemented with API');
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    input.onchange = async (e: any) => {
+      const selectedFiles = Array.from(e.target.files || []) as File[];
+      if (selectedFiles.length === 0) return;
+
+      // Show upload dialog with file info
+      const fileList = selectedFiles.map(f => `- ${f.name} (${(f.size / 1024).toFixed(2)} KB)`).join('\n');
+      alert(`Ready to upload ${selectedFiles.length} file(s):\n\n${fileList}\n\nNote: Backend API endpoint /api/workspace/upload needs to be implemented.\n\nThe upload will use multipart/form-data with progress tracking.`);
+
+      // Future implementation example:
+      // const formData = new FormData();
+      // selectedFiles.forEach(file => formData.append('files', file));
+      // try {
+      //   await api.post('/workspace/upload', formData, {
+      //     headers: { 'Content-Type': 'multipart/form-data' },
+      //     onUploadProgress: (progressEvent) => {
+      //       const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+      //       console.log(`Upload Progress: ${percentCompleted}%`);
+      //     }
+      //   });
+      //   toast.success('Files uploaded successfully!');
+      //   // Refresh file list
+      // } catch (error) {
+      //   toast.error('Upload failed');
+      // }
+    };
+    input.click();
   };
 
   const handleNewFolder = () => {
@@ -93,6 +120,20 @@ export default function WorkspacePage() {
   const handleDownload = (name: string) => {
     // TODO: Implement file download
     alert(`Download ${name} - to be implemented with API`);
+  };
+
+  const handleFolderClick = (folderName: string) => {
+    // Navigate into the folder
+    setCurrentPath([...currentPath, folderName]);
+    // TODO: Fetch files from the new path via API
+    // For now, just show a message
+    alert(`Navigating to: ${[...currentPath, folderName].join('/')}\n\nIn production, this would:\n1. Call GET /api/workspace/files?path=${encodeURIComponent([...currentPath, folderName].join('/'))}\n2. Load files from that directory\n3. Update the file list`);
+  };
+
+  const handleBreadcrumbClick = (index: number) => {
+    // Navigate back to a specific level
+    setCurrentPath(currentPath.slice(0, index + 1));
+    // TODO: Fetch files from the clicked path via API
   };
 
   return (
@@ -144,7 +185,10 @@ export default function WorkspacePage() {
           <ChevronRight className="h-4 w-4" />
           {currentPath.map((path, index) => (
             <React.Fragment key={index}>
-              <span className="font-medium text-gray-900 cursor-pointer hover:text-indigo-600">
+              <span
+                onClick={() => handleBreadcrumbClick(index)}
+                className="font-medium text-gray-900 cursor-pointer hover:text-indigo-600"
+              >
                 {path}
               </span>
               {index < currentPath.length - 1 && (
@@ -198,7 +242,10 @@ export default function WorkspacePage() {
                         ) : (
                           <FileText className="h-5 w-5 text-gray-400" />
                         )}
-                        <span className="font-medium cursor-pointer hover:text-indigo-600">
+                        <span
+                          onClick={() => file.type === 'folder' && handleFolderClick(file.name)}
+                          className="font-medium cursor-pointer hover:text-indigo-600"
+                        >
                           {file.name}
                         </span>
                       </div>
