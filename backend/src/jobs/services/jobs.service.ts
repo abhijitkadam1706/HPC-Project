@@ -344,8 +344,7 @@ export class JobsService {
       throw new NotFoundException('Job working directory not found');
     }
 
-    const Archiver = archiver;
-    const archive = Archiver('zip', {
+    const archive = archiver('zip', {
       zlib: { level: 9 } // Maximum compression
     });
 
