@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards, Req, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, UseGuards, Req, Query, Res, StreamableFile } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { JobsService } from '../services/jobs.service';
 import { CreateJobDto } from '../dto/create-job.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { Response } from 'express';
 
 @ApiTags('jobs')
 @Controller('jobs')
@@ -50,5 +51,19 @@ export class JobsController {
   @ApiQuery({ name: 'type', required: false, enum: ['stdout', 'stderr', 'scheduler'] })
   async getLogs(@Param('id') id: string, @Req() req: any, @Query('type') type?: string) {
     return this.jobsService.getLogs(id, req.user.id, type);
+  }
+
+  @Get(':id/outputs/download')
+  @ApiOperation({ summary: 'Download job outputs as ZIP archive' })
+  async downloadOutputs(@Param('id') id: string, @Req() req: any, @Res({ passthrough: true }) res: Response) {
+    const { buffer, filename } = await this.jobsService.downloadOutputs(id, req.user.id);
+
+    res.set({
+      'Content-Type': 'application/zip',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length': buffer.length,
+    });
+
+    return new StreamableFile(buffer);
   }
 }

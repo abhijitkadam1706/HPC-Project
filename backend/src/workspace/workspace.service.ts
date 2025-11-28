@@ -23,14 +23,56 @@ export class WorkspaceService {
     return path.join(this.workspaceRoot, 'users', userId);
   }
 
-  async listUserFiles(userId: string): Promise<string[]> {
+  async listUserFiles(userId: string, relativePath?: string): Promise<any[]> {
     const userWorkspace = await this.getUserWorkspacePath(userId);
+    const targetPath = relativePath
+      ? path.join(userWorkspace, relativePath)
+      : userWorkspace;
+
     try {
-      const files = await fs.readdir(userWorkspace);
-      return files;
+      const files = await fs.readdir(targetPath);
+      const fileDetails = await Promise.all(
+        files.map(async (file) => {
+          const filePath = path.join(targetPath, file);
+          const stats = await fs.stat(filePath);
+          return {
+            name: file,
+            type: stats.isDirectory() ? 'directory' : 'file',
+            size: stats.size,
+            modified: stats.mtime,
+          };
+        })
+      );
+      return fileDetails;
     } catch (error) {
       this.logger.error(`Failed to list files for user ${userId}:`, error);
       return [];
     }
+  }
+
+  async uploadFiles(userId: string, files: Express.Multer.File[], relativePath?: string): Promise<{ uploaded: string[] }> {
+    const userWorkspace = await this.getUserWorkspacePath(userId);
+    const targetPath = relativePath
+      ? path.join(userWorkspace, relativePath)
+      : userWorkspace;
+
+    // Ensure directory exists
+    await fs.mkdir(targetPath, { recursive: true });
+
+    const uploaded: string[] = [];
+
+    for (const file of files) {
+      try {
+        const filePath = path.join(targetPath, file.originalname);
+        await fs.writeFile(filePath, file.buffer);
+        await fs.chmod(filePath, 0o644);
+        uploaded.push(file.originalname);
+        this.logger.log(`File uploaded: ${filePath}`);
+      } catch (error) {
+        this.logger.error(`Failed to upload file ${file.originalname}:`, error);
+      }
+    }
+
+    return { uploaded };
   }
 }

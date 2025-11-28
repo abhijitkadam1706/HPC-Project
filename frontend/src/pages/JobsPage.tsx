@@ -232,9 +232,25 @@ export default function JobsPage() {
                       {job.status === 'COMPLETED' && (
                         <button
                           className="text-green-600 hover:text-green-900"
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.stopPropagation();
-                            alert('Download outputs - to be implemented');
+                            try {
+                              const response = await api.get(`/jobs/${job.id}/outputs/download`, {
+                                responseType: 'blob',
+                              });
+                              const blob = new Blob([response.data], { type: 'application/zip' });
+                              const url = window.URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `job-${job.jobName}-${job.id}.zip`;
+                              document.body.appendChild(a);
+                              a.click();
+                              window.URL.revokeObjectURL(url);
+                              document.body.removeChild(a);
+                            } catch (error) {
+                              console.error('Download failed:', error);
+                              alert('Failed to download job outputs');
+                            }
                           }}
                         >
                           <Download className="h-4 w-4 inline" />

@@ -3,8 +3,9 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { SlurmSchedulerService } from '../../scheduler/services/slurm-scheduler.service';
 import { CreateJobDto } from '../dto/create-job.dto';
 import { ConfigService } from '@nestjs/config';
-import { writeFile, mkdir, chmod } from 'fs/promises';
+import { writeFile, mkdir, chmod, readdir, stat, readFile } from 'fs/promises';
 import { join } from 'path';
+import * as archiver from 'archiver';
 import { JobStatus, JobEventType } from '@prisma/client';
 
 @Injectable()
@@ -334,5 +335,51 @@ export class JobsService {
     });
 
     this.logger.log(`Usage record created for job ${job.id}: ${cpuHours} CPU hours, ${gpuHours} GPU hours`);
+  }
+
+  async downloadOutputs(jobId: string, userId: string): Promise<{ buffer: Buffer; filename: string }> {
+    const job = await this.findOne(jobId, userId);
+
+    if (!job.workingDirectory) {
+      throw new NotFoundException('Job working directory not found');
+    }
+
+    const Archiver = archiver;
+    const archive = Archiver('zip', {
+      zlib: { level: 9 } // Maximum compression
+    });
+
+    const buffers: Buffer[] = [];
+
+    return new Promise(async (resolve, reject) => {
+      archive.on('data', (chunk) => buffers.push(chunk));
+      archive.on('end', () => {
+        const buffer = Buffer.concat(buffers);
+        resolve({
+          buffer,
+          filename: `job-${job.jobName}-${jobId}.zip`
+        });
+      });
+      archive.on('error', (err) => reject(err));
+
+      try {
+        // Read all files in the job directory
+        const files = await readdir(job.workingDirectory);
+
+        for (const file of files) {
+          const filePath = join(job.workingDirectory, file);
+          const stats = await stat(filePath);
+
+          if (stats.isFile()) {
+            const content = await readFile(filePath);
+            archive.append(content, { name: file });
+          }
+        }
+
+        archive.finalize();
+      } catch (error) {
+        reject(error);
+      }
+    });
   }
 }
