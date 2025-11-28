@@ -71,7 +71,7 @@ services:
         condition: service_healthy
     volumes:
       - ${WORKSPACE_ROOT:-./workspace}:/shared/hpc-portal
-      - ${SLURM_SSH_KEY_PATH:-./ssh_keys}:/app/ssh_keys:ro
+      - ./ssh_keys:/app/ssh_keys:ro
     networks:
       - hpc-network
 
