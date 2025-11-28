@@ -67,6 +67,7 @@ export class JobsService {
       // Build Slurm script
       const scriptContent = await this.scheduler.buildJobScript({
         ...job,
+        workingDirectory: workingDir,
         environmentConfig: dto.environmentConfig,
       });
 

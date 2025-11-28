@@ -23,7 +23,7 @@ export default function NewJobPage() {
     nodes: 1,
     tasks: 1,
     cpusPerTask: 1,
-    memoryPerNodeGB: 2,
+    memoryPerNodeGB: 1,
     gpusPerNode: 0,
     walltimeSeconds: 3600,
     priority: 0,
