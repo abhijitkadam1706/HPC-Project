@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import { Button } from '@/components/ui/Button';
 import {
@@ -7,7 +7,6 @@ import {
   Folder,
   FileText,
   Upload,
-  PlusCircle,
   Download,
   Trash2,
   ChevronRight,
@@ -26,7 +25,6 @@ interface FileItem {
 export default function WorkspacePage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPath, setCurrentPath] = useState<string[]>([]);
-  const queryClient = useQueryClient();
 
   const relativePath = currentPath.join('/');
 
