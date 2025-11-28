@@ -234,17 +234,61 @@ export class JobsService {
   }
 
   async getLogs(id: string, userId: string, type?: string) {
-    await this.findOne(id, userId); // Check access
+    const job = await this.findOne(id, userId); // Check access
 
-    const where: any = { jobId: id };
-    if (type) {
-      where.type = type.toUpperCase();
+    const logs: any[] = [];
+
+    if (!job.workingDirectory || !job.externalSchedulerId) {
+      this.logger.warn(`No working directory or Slurm ID for job ${id}`);
+      return logs;
     }
 
-    return this.prisma.jobLog.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-    });
+    try {
+      const slurmJobId = job.externalSchedulerId;
+      const stdoutPath = join(job.workingDirectory, `slurm-${slurmJobId}.out`);
+      const stderrPath = join(job.workingDirectory, `slurm-${slurmJobId}.err`);
+
+      // Read stdout if no specific type or type is STDOUT
+      if (!type || type.toUpperCase() === 'STDOUT') {
+        try {
+          const stdout = await readFile(stdoutPath, 'utf-8');
+          if (stdout.trim()) {
+            logs.push({
+              id: `${id}-stdout`,
+              jobId: id,
+              type: 'STDOUT',
+              content: stdout,
+              createdAt: job.startTime || job.submissionTime,
+            });
+          }
+        } catch (error) {
+          this.logger.debug(`No stdout file for job ${id}: ${error.message}`);
+        }
+      }
+
+      // Read stderr if no specific type or type is STDERR
+      if (!type || type.toUpperCase() === 'STDERR') {
+        try {
+          const stderr = await readFile(stderrPath, 'utf-8');
+          if (stderr.trim()) {
+            logs.push({
+              id: `${id}-stderr`,
+              jobId: id,
+              type: 'STDERR',
+              content: stderr,
+              createdAt: job.startTime || job.submissionTime,
+            });
+          }
+        } catch (error) {
+          this.logger.debug(`No stderr file for job ${id}: ${error.message}`);
+        }
+      }
+
+      return logs;
+    } catch (error) {
+      this.logger.error(`Failed to read logs for job ${id}: ${error.message}`);
+      return [];
+    }
   }
 
   /**

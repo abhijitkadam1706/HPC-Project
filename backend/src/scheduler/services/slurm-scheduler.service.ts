@@ -155,6 +155,7 @@ export class SlurmSchedulerService implements ISchedulerService {
       mainCommand = `singularity exec $SINGULARITY_IMAGE ${mainCommand}`;
     }
 
+    // Add the command - preserve newlines if present
     lines.push(mainCommand);
     lines.push('');
 

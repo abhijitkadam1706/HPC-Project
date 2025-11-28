@@ -365,15 +365,27 @@ export default function NewJobPage() {
           {/* 4. Execution */}
           <Section title="4. Execution">
             <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Command / Script *
+                </label>
+                <textarea
+                  rows={8}
+                  value={formData.command}
+                  onChange={(e) => handleInputChange('command', e.target.value)}
+                  className="block w-full rounded-md border-gray-300 shadow-sm border p-2 font-mono text-xs focus:border-indigo-500 focus:ring-indigo-500"
+                  placeholder={`#!/bin/bash
+echo "Starting job..."
+python train.py
+# Or enter a single command like: python script.py`}
+                  required
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Enter a single command or a multi-line bash script (including shebang if needed)
+                </p>
+              </div>
               <Input
-                label="Command *"
-                value={formData.command}
-                onChange={(e) => handleInputChange('command', e.target.value)}
-                placeholder="e.g., python train.py or ./mysolver or bash script.sh"
-                required
-              />
-              <Input
-                label="Arguments"
+                label="Arguments (Optional)"
                 value={formData.arguments}
                 onChange={(e) => handleInputChange('arguments', e.target.value)}
                 placeholder="e.g., --epochs 100 --batch-size 32"
