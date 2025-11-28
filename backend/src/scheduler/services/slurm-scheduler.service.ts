@@ -58,6 +58,18 @@ export class SlurmSchedulerService implements ISchedulerService {
   }
 
   /**
+   * Sanitize job name for Slurm
+   * Slurm job names cannot contain spaces or special characters
+   */
+  private sanitizeJobName(jobName: string): string {
+    // Replace spaces and special chars with hyphens, remove invalid characters
+    return jobName
+      .replace(/[^a-zA-Z0-9_-]/g, '-')  // Replace invalid chars with hyphen
+      .replace(/--+/g, '-')              // Replace multiple hyphens with single
+      .substring(0, 64);                 // Slurm job name limit is 64 chars
+  }
+
+  /**
    * Build Slurm batch script for a job
    */
   async buildJobScript(job: any): Promise<string> {
@@ -68,7 +80,8 @@ export class SlurmSchedulerService implements ISchedulerService {
     lines.push('');
 
     // SBATCH directives
-    lines.push(`#SBATCH --job-name=${job.jobName}`);
+    const sanitizedJobName = this.sanitizeJobName(job.jobName);
+    lines.push(`#SBATCH --job-name=${sanitizedJobName}`);
     lines.push(`#SBATCH --partition=${job.queue}`);
     lines.push(`#SBATCH --nodes=${job.nodes}`);
     lines.push(`#SBATCH --ntasks=${job.tasks}`);
@@ -85,8 +98,8 @@ export class SlurmSchedulerService implements ISchedulerService {
     const seconds = job.walltimeSeconds % 60;
     lines.push(`#SBATCH --time=${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
 
-    lines.push(`#SBATCH --output=${job.workingDirectory}/slurm-%j.out`);
-    lines.push(`#SBATCH --error=${job.workingDirectory}/slurm-%j.err`);
+    lines.push(`#SBATCH --output="${job.workingDirectory}/slurm-%j.out"`);
+    lines.push(`#SBATCH --error="${job.workingDirectory}/slurm-%j.err"`);
 
     if (job.priority) {
       lines.push(`#SBATCH --priority=${job.priority}`);
@@ -140,7 +153,7 @@ export class SlurmSchedulerService implements ISchedulerService {
     }
 
     // Change to working directory
-    lines.push(`cd ${job.workingDirectory}`);
+    lines.push(`cd "${job.workingDirectory}"`);
     lines.push('');
 
     // Main command
