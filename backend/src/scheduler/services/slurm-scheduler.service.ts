@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { Client as SSHClient } from 'ssh2';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { ISchedulerService, SchedulerJobStatus, QueueInfo } from '../interfaces/scheduler.interface';
 import { Job, EnvironmentType } from '@prisma/client';
 import { writeFile, mkdir } from 'fs/promises';
@@ -28,13 +28,32 @@ export class SlurmSchedulerService implements ISchedulerService {
 
     if (this.mode === 'ssh') {
       const keyPath = this.configService.get<string>('SLURM_SSH_KEY_PATH');
+      let privateKey: Buffer | undefined;
+
+      if (keyPath) {
+        if (existsSync(keyPath)) {
+          try {
+            privateKey = readFileSync(keyPath);
+            this.logger.log(`SSH private key loaded from ${keyPath}`);
+          } catch (error) {
+            this.logger.error(`Failed to read SSH key from ${keyPath}: ${error.message}`);
+          }
+        } else {
+          this.logger.warn(`SSH key file not found at ${keyPath}. SSH authentication may fail.`);
+        }
+      }
+
       this.sshConfig = {
         host: this.configService.get<string>('SLURM_SSH_HOST'),
         port: parseInt(this.configService.get<string>('SLURM_SSH_PORT') || '22'),
         username: this.configService.get<string>('SLURM_SSH_USER'),
-        privateKey: keyPath ? readFileSync(keyPath) : undefined,
+        privateKey,
         password: this.configService.get<string>('SLURM_SSH_PASSWORD'),
       };
+
+      this.logger.log(`Slurm scheduler configured in SSH mode: ${this.sshConfig.username}@${this.sshConfig.host}:${this.sshConfig.port}`);
+    } else {
+      this.logger.log('Slurm scheduler configured in LOCAL mode');
     }
   }
 
