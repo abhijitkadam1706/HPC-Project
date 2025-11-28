@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Section } from '@/components/ui/Section';
-import { RefreshCw, Terminal, Cpu, HardDrive, Clock, Upload } from 'lucide-react';
+import { RefreshCw, Terminal, Cpu, HardDrive, Clock, Upload, X } from 'lucide-react';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import { CreateJobData, EnvironmentType, JobType } from '@/types';
@@ -11,6 +11,9 @@ import { CreateJobData, EnvironmentType, JobType } from '@/types';
 export default function NewJobPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form state
   const [formData, setFormData] = useState<Partial<CreateJobData>>({
@@ -48,6 +51,44 @@ export default function NewJobPage() {
 
   const handleInputChange = (field: keyof CreateJobData, value: any) => {
     setFormData({ ...formData, [field]: value });
+  };
+
+  const handleBrowseFiles = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      files.forEach(file => formData.append('files', file));
+
+      // Upload to workspace
+      const response = await api.post('/workspace/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      setUploadedFiles(prev => [...prev, ...files]);
+      toast.success(`Uploaded ${response.data.uploaded.length} file(s) to workspace`);
+
+      // Update input location ref to workspace
+      handleInputChange('inputLocationRef', 'workspace');
+    } catch (error) {
+      console.error('File upload failed:', error);
+      toast.error('Failed to upload files');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -488,14 +529,51 @@ python train.py
               )}
 
               {formData.inputLocationType === 'UPLOAD' && (
-                <div className="p-6 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 text-center">
-                  <Upload className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-                  <Button variant="secondary" size="sm" type="button">
-                    Browse Files
-                  </Button>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Drag and drop files here, or click to select
-                  </p>
+                <div className="space-y-3">
+                  <div className="p-6 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 text-center">
+                    <Upload className="mx-auto h-12 w-12 text-gray-400 mb-3" />
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      type="button"
+                      onClick={handleBrowseFiles}
+                      disabled={uploading}
+                    >
+                      {uploading ? 'Uploading...' : 'Browse Files'}
+                    </Button>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Click to select files to upload to workspace
+                    </p>
+                  </div>
+
+                  {uploadedFiles.length > 0 && (
+                    <div className="bg-white border border-gray-200 rounded-md p-3">
+                      <p className="text-sm font-medium text-gray-700 mb-2">
+                        Uploaded Files ({uploadedFiles.length})
+                      </p>
+                      <div className="space-y-1">
+                        {uploadedFiles.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between text-sm py-1">
+                            <span className="text-gray-600">{file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveFile(index)}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
