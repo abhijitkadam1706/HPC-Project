@@ -5,7 +5,7 @@ import { CreateJobDto } from '../dto/create-job.dto';
 import { ConfigService } from '@nestjs/config';
 import { writeFile, mkdir, chmod, readdir, stat, readFile } from 'fs/promises';
 import { join } from 'path';
-import * as archiver from 'archiver';
+import archiver from 'archiver';
 import { JobStatus, JobEventType } from '@prisma/client';
 
 @Injectable()
