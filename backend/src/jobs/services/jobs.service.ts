@@ -3,7 +3,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { SlurmSchedulerService } from '../../scheduler/services/slurm-scheduler.service';
 import { CreateJobDto } from '../dto/create-job.dto';
 import { ConfigService } from '@nestjs/config';
-import { writeFile, mkdir } from 'fs/promises';
+import { writeFile, mkdir, chmod } from 'fs/promises';
 import { join } from 'path';
 import { JobStatus, JobEventType } from '@prisma/client';
 
@@ -57,6 +57,8 @@ export class JobsService {
 
     try {
       await mkdir(workingDir, { recursive: true });
+      // Set permissions so Slurm user can write output files
+      await chmod(workingDir, 0o777);
 
       // Update job with working directory
       await this.prisma.job.update({
@@ -74,6 +76,8 @@ export class JobsService {
       // Write script to file
       const scriptPath = join(workingDir, 'job.sh');
       await writeFile(scriptPath, scriptContent);
+      // Make script executable and readable by all
+      await chmod(scriptPath, 0o755);
 
       // Submit to Slurm
       const { schedulerJobId } = await this.scheduler.submitJob(job.id, scriptPath);
